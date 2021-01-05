@@ -63,6 +63,89 @@ $ tic /path/to/kakoune/contrib/tmux-256color.terminfo
 
 Finally, quit all existing sessions (`tmux kill-server`), and restart `tmux`.
 
+=== macOS Terminal.app specific
+
+==== Setting correct $TERM value
+
+Select the menu Terminal->Preferences->Profiles->Advanced tab, and make sure
+the "Declare terminal as:" value is set to 'xterm-256color'.
+
+IMPORTANT: do not set $TERM value in any .bashrc/.zshrc/.fishrc, etc.; do it 
+at the terminal emulator level (Terminal.app preferences menu) only! The issue
+many people encounter is they have been told to set $TERM somewhere in a 
+bash/zsh script; the issue with this, among others, is that when you run tmux
+it sources your 'rc' scripts (bash/zsh/fish/etc.) and if a $TERM value is set
+in them they it overrides what we want, namely $TERM value *inside* tmux to be
+set to 'tmux-256color'.
+
+To test everything is setup correctly do the following, after opening a new
+Terminal.app window:
+
+----
+% echo $TERM
+xterm-256color
+% tmux
+% echo $TERM
+tmux-256color
+% exit
+----
+
+If when inside tmux, `echo $TERM` gives you something other than 
+'tmux-256color', then it means one of your startup scripts is setting it
+AFTER we have set it in our $HOME/.tmux.conf file.
+
+==== Enable Alt-key Support
+
+If you are using macOS's Terminal.app terminal emulator, you'll need to make
+sure "Use Option as Meta Key" is checked under the Edit menu. Without this
+setting you will not be able to use the Alt+<key> combinations Kakoune relies
+on.
+
+It can also be enabled by checking "Use Option as Meta Key" under the 
+Terminal->Preferences->Profiles->Keyboard tab, to save the option to the
+active profile.
+
+==== Better tmux support
+
+macOS, as of 11.1 (January 2021) still ships with an older version of the
+ncurses library (5.7) which does not contain a terminal info database
+entry for 'tmux-256color'. You can choose to use 'screen-256color' in your
+.tmux.conf but the colors will be slightly off and a few other textual
+features are not supported, e.g., italicized text and xterm cursor shapes.
+Thankfully, we can build a new terminfo file and compile it ourselves for
+better tmux support.
+
+Open Terminal.app and do the following:
+
+----
+% cd
+% curl -O https://raw.githubusercontent.com/mawww/kakoune/master/contrib/tmux-256color.terminfo
+% /usr/bin/tic -x $HOME/tmux-256color.terminfo
+% rm $HOME/tmux-256color.terminfo
+----
+
+Note: you *must* use the `-x` flag here when building for Terminal.app to
+support "unknown capabilities as user-defined" (`man tic`).
+
+~/.tmux.conf
+----
+set -g default-terminal "tmux-256color"
+----
+
+If you have the following anywhere in your .tmux.conf file:
+
+~/.tmux.conf
+----
+set -ga terminal-overrides ",*col*:Tc"
+----
+
+Remove or comment out the line. This line is telling tmux that the 'outside'
+terminal emulator (Terminal.app) supports true color ('Tc' flag) which is
+does not. Setting this will leave you with incorrect colorschemes in
+Kakoune, and other places.
+
+Finally, quit all existing sessions (`tmux kill-server`), and restart `tmux`.
+
 === Why do I see weird special characters (~T~@~U) around Clippy?
 
 You need a UTF-8 compliant locale, in order to render special characters.
